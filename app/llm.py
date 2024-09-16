@@ -1,7 +1,8 @@
 # app/llm.py
 from pathlib import Path
 from typing import Any
-import ollama_python as ollama
+import ollama
+from ollama import Client
 
 from models.factory import ModelFactory
 from utils import local_info
@@ -19,7 +20,17 @@ class LLM:
         context = self.read_context_txt_file()
 
         self.model = ModelFactory.create_model(self.model_name, base_url, context)
-
+        client = Client(host='http://localhost:8000')
+        response = client.chat(model='llama3.1', messages=[
+          {
+            'role': 'user',
+            'content': 'Why is the sky blue?',
+        },
+        {
+            'role': 'assistant',
+            'content': 'The sky is blue because of Rayleigh scattering.'
+        }
+        ])
     def get_settings_values(self) -> tuple[str, str]:
         model_name = self.settings_dict.get('model')
         if not model_name:
@@ -38,7 +49,7 @@ class LLM:
         self.model = ModelFactory.create_model(self.model_name, context)
 
     def download_model(self, model_name: str):
-        if isinstance(self.model, ollama.OllamaModel):
+        if isinstance(self.model, ollama.list):
             self.model.download_model(model_name)
 
     def read_context_txt_file(self) -> str:
