@@ -2,7 +2,6 @@ import time
 from multiprocessing import Queue
 from typing import Optional, Any
 
-from openai import OpenAIError
 
 from interpreter import Interpreter
 from llm import LLM
@@ -20,8 +19,8 @@ class Core:
         self.llm = None
         try:
             self.llm = LLM()
-        except OpenAIError as e:
-            self.status_queue.put(f'Set your OpenAPI API Key in Settings and Restart the App. Error: {e}')
+        except Exception as e:
+            self.status_queue.put(f'Error: {e}')
 
     def execute_user_request(self, user_request: str) -> None:
         self.stop_previous_request()
