@@ -1,27 +1,60 @@
 # app/utils/settings.py
-
+import base64
 import json
+import os
 from pathlib import Path
+
 
 class Settings:
     def __init__(self):
-        self.settings_file = Path('settings.json')
-        self.settings_dict = self.load_settings()
+        self.settings_file_path = self.get_settings_directory_path() + 'settings.json'
+        os.makedirs(os.path.dirname(self.settings_file_path), exist_ok=True)
+        self.settings = self.load_settings_from_file()
 
-    def load_settings(self) -> dict:
-        if self.settings_file.exists():
-            with self.settings_file.open('r') as file:
-                return json.load(file)
+    def get_settings_directory_path(self):
+        return str(Path.home()) + '/.open-interface/'
+
+    def get_dict(self) -> dict[str, str]:
+        return self.settings
+
+    def save_settings_to_file(self, settings_dict) -> None:
+        settings: dict[str, str] = {}
+
+        # Preserve previous settings in case new dict doesn't contain them
+        if os.path.exists(self.settings_file_path):
+            with open(self.settings_file_path, 'r') as file:
+                try:
+                    settings = json.load(file)
+                except:
+                    settings = {}
+
+        for setting_name in settings_dict:
+            setting_val = settings_dict[setting_name]
+            if setting_val is not None:
+                if setting_name == "base_url":
+                    base_url = settings_dict["base_url"]
+                    os.environ["BASE_URL"] = base_url  # Set environment variable
+                    encoded_api_key = base64.b64encode(base_url.encode()).decode()
+                    settings['base_url'] = encoded_api_key
+                else:
+                    settings[setting_name] = setting_val
+
+        with open(self.settings_file_path, 'w+') as file:
+            json.dump(settings, file, indent=4)
+
+    def load_settings_from_file(self) -> dict[str, str]:
+        if os.path.exists(self.settings_file_path):
+            with open(self.settings_file_path, 'r') as file:
+                try:
+                    settings = json.load(file)
+                except:
+                    return {}
+
+                # Decode the API key
+                if 'base_url' in settings:
+                    decoded_base_url = base64.b64decode(settings['base_url']).decode()
+                    settings['base_url'] = decoded_base_url
+                return settings
         else:
             return {}
 
-    def get_dict(self) -> dict:
-        return self.settings_dict
-
-    def save_settings(self):
-        with self.settings_file.open('w') as file:
-            json.dump(self.settings_dict, file, indent=4)
-
-    def set_model(self, model_name: str):
-        self.settings_dict['model'] = model_name
-        self.save_settings()
