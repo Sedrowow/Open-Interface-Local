@@ -43,7 +43,7 @@ class UI:
 
             if 'base_url' in settings_dict:
                 self.base_url_entry.insert(0, settings_dict['base_url'])
-            DEFAULT_MODEL_NAME = 'gemma2'  # Replace 'default_model' with the actual default model name
+            DEFAULT_MODEL_NAME = 'gemma2'
             
             if 'model' in settings_dict:
                 self.model_entry.insert(0, settings_dict['model'])
@@ -62,9 +62,9 @@ class UI:
             radio_frame.pack(padx=20, pady=10)  # Add padding around the frame
 
             models = [
-                ('GPT-4v (Most Accurate, Slowest)', 'gpt-4-vision-preview'),
-                ('GPT-4o (Medium Accurate, Medium Fast)', 'gpt-4o'),
-                ('GPT-4-Turbo (Least Accurate, Fastest)', 'gpt-4-turbo'),
+                ('Google Gemma 2 is a high-performing and efficient model (5.4GB)', 'gemma2'),
+                ('A lightweight AI model (2.2GB)', 'phi3.5'),
+                ('Meta Llama 3: The most capable openly available LLM to date (4.7GB)', 'llama3'),
                 ('Custom (Specify Settings Below)', 'custom')
             ]
             for text, value in models:
@@ -126,13 +126,6 @@ class UI:
                 self.llm_instructions_text.insert('1.0', settings_dict['custom_llm_instructions'])
 
         def create_widgets(self) -> None:
-            # Label for API Key
-            label_api = tk.Label(self, text='OpenAI API Key:')
-            label_api.pack(pady=10)
-
-            # Entry for API Key
-            self.api_key_entry = ttk.Entry(self, width=30)
-            self.api_key_entry.pack()
 
             # Label for Browser Choice
             label_browser = tk.Label(self, text='Choose Default Browser:')
@@ -223,36 +216,6 @@ class UI:
 
             self.model_var = tk.StringVar(value=self.llm.model_name)
             self.create_widgets()
-
-        def create_widgets(self) -> None:
-            # Creates and arranges the UI elements
-            # Frame
-            frame = ttk.Frame(self, padding='10 10 10 10')
-            frame.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
-
-            # Model selection dropdown
-            model_label = ttk.Label(frame, text="Select Model:")
-            model_label.grid(column=0, row=0, sticky=tk.W)
-
-            model_dropdown = ttk.Combobox(frame, textvariable=self.model_var)
-            model_dropdown['values'] = ('ollama', 'other_model_1', 'other_model_2')
-            model_dropdown.grid(column=1, row=0, sticky=(tk.W, tk.E))
-            model_dropdown.bind("<<ComboboxSelected>>", self.on_model_selected)
-
-            # User input text box
-            self.user_input = tk.Text(frame, height=10, width=50)
-            self.user_input.grid(column=0, row=1, columnspan=2, sticky=(tk.W, tk.E))
-
-            # Submit button
-            submit_button = ttk.Button(frame, text="Submit", command=self.on_submit)
-            submit_button.grid(column=0, row=2, columnspan=2, sticky=tk.E)
-
-            # Configure grid weights
-            self.columnconfigure(0, weight=1)
-            self.rowconfigure(0, weight=1)
-            frame.columnconfigure(0, weight=1)
-            frame.columnconfigure(1, weight=1)
-            frame.rowconfigure(1, weight=1)
 
         def on_model_selected(self, event):
            selected_model = self.model_var.get()

@@ -47,3 +47,9 @@ class LLM:
             with context_path.open('r') as file:
                 return file.read()
         return ""
+    
+    def get_instructions_for_objective(self, original_user_request: str, step_num: int = 0) -> dict[str, Any]:
+        return self.model.get_instructions_for_objective(original_user_request, step_num)
+
+    def cleanup(self):
+        self.model.cleanup()
