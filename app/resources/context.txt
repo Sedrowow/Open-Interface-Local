@@ -101,7 +101,7 @@ class Core:
         self.interrupt_execution = False
 
         if not self.llm:
-            status = 'Set your OpenAPI API Key in Settings and Restart the App'
+            status = 'oops something went wrong'
             self.status_queue.put(status)
             return status
 
@@ -146,6 +146,7 @@ class Core:
 
     def cleanup(self):
         self.llm.cleanup()
+
 
 class Interpreter:
     def __init__(self, status_queue: Queue):
@@ -220,7 +221,7 @@ class Interpreter:
         else:
             print(f'No such function {function_name} in our interface\'s interpreter')
 
-class LLM:
+class LLM(Client):
     def __init__(self):
         self.settings_dict: dict[str, str] = Settings().get_dict()
         model_name, base_url = self.get_settings_values()
@@ -229,7 +230,8 @@ class LLM:
         context = self.read_context_txt_file()
 
         self.model = ModelFactory.create_model(self.model_name, base_url, context)
-
+        super().__init__(base_url)  # Correct usage
+        
     def get_settings_values(self) -> tuple[str, str]:
         model_name = self.settings_dict.get('model')
         if not model_name:
@@ -243,18 +245,37 @@ class LLM:
         return model_name, base_url
 
     def switch_model(self, model_name: str):
-        self.model_name = model_name
+        model_name, base_url = self.get_settings_values()
         context = self.read_context_txt_file()
-        self.model = ModelFactory.create_model(self.model_name, context)
+        self.model_name = model_name
+        self.model = ModelFactory.create_model(self.model_name, base_url, context)
 
     def download_model(self, model_name: str):
-        if isinstance(self.model, ollama.OllamaModel):
+        if isinstance(self.model, OllamaModel):
             self.model.download_model(model_name)
 
     def read_context_txt_file(self) -> str:
-        context_path = Path('resources/context.txt')
-        if context_path.exists():
-            with context_path.open('r') as file:
-                return file.read()
-        return ""
+        # Construct context for the assistant by reading context.txt and adding extra system information
+        context = ''
+        path_to_context_file = Path(__file__).resolve().parent.joinpath('resources', 'context.txt')
+        with open(path_to_context_file, 'r') as file:
+            context += file.read()
+
+        context += f' Locally installed apps are {",".join(local_info.locally_installed_apps)}.'
+        context += f' OS is {local_info.operating_system}.'
+        context += f' Primary screen size is {Screen().get_size()}.\n'
+
+        if 'default_browser' in self.settings_dict.keys() and self.settings_dict['default_browser']:
+            context += f'\nDefault browser is {self.settings_dict["default_browser"]}.'
+
+        if 'custom_llm_instructions' in self.settings_dict:
+            context += f'\nCustom user-added info: {self.settings_dict["custom_llm_instructions"]}.'
+
+        return context
+    
+    def get_instructions_for_objective(self, original_user_request: str, step_num: int = 0) -> dict[str, Any]:
+        return self.model.get_instructions_for_objective(original_user_request, step_num)
+
+    def cleanup(self):
+        self.model.cleanup()
 End of code
