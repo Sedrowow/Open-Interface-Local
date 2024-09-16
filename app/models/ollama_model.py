@@ -45,7 +45,7 @@ class OllamaModel(Model):
                         'content': self.context
                     },
                     {
-                        'role': 'prompt',
+                        'role': 'user_prompt',
                         'content': formatted_user_request
                     },
                      ]

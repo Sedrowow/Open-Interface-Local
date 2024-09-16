@@ -8,7 +8,7 @@ from utils import local_info
 from utils.screen import Screen
 from utils.settings import Settings
 
-DEFAULT_MODEL_NAME = "gemma2"
+DEFAULT_MODEL_NAME = "llama3"
 
 class LLM(Client):
     def __init__(self):
