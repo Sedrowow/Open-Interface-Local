@@ -16,7 +16,7 @@ htmlcov/
 env/
 venv/
 venvName/
-
+.venv/
 # DB
 instance/
 
