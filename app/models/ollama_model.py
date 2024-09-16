@@ -41,7 +41,7 @@ class OllamaModel(Model):
                 model=self.model_name,
                 messages=[
                     {
-                        'role': 'instructions',
+                        'role': 'context/instructions',
                         'content': self.context
                     },
                     {
@@ -57,7 +57,11 @@ class OllamaModel(Model):
 
     def convert_llm_response_to_json_instructions(self, llm_response: Any) -> dict[str, Any]:
         try:
-            llm_response_data = llm_response['choices'][0]['text'].strip()
+            if llm_response and 'choices' in llm_response and len(llm_response['choices']) > 0:
+                llm_response_data = llm_response['choices'][0]['text'].strip()
+            else:
+                print('Invalid LLM response format')
+                return {}
         except (KeyError, IndexError) as e:
             print(f'Error while accessing LLM response - {e}')
             return {}

@@ -44,7 +44,7 @@ class Core:
         self.interrupt_execution = False
 
         if not self.llm:
-            status = 'oops something went wrong'
+            status = 'LLM not running corectly'
             self.status_queue.put(status)
             return status
 
