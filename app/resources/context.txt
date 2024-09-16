@@ -67,62 +67,150 @@ I will now show you the source code so you can better understand how your respon
 
 class Core:
     def __init__(self):
-        self.llm = LLM()
-        self.interpreter = Interpreter()
-    def run(self):
-        while True:
-            user_request = input("\nEnter your request: ").strip()
-            self.execute(user_request)
-    def execute(self, user_request, step_num=0):
+        self.status_queue = Queue()
+        self.interrupt_execution = False
+        self.settings_dict = Settings().get_dict()
+
+        self.interpreter = Interpreter(self.status_queue)
+
+        self.llm = None
+        try:
+            self.llm = LLM()
+        except Exception as e:
+            self.status_queue.put(f'Error: {e}')
+
+    def execute_user_request(self, user_request: str) -> None:
+        self.stop_previous_request()
+        time.sleep(0.1)
+        self.execute(user_request)
+
+    def stop_previous_request(self) -> None:
+        self.interrupt_execution = True
+
+    def execute(self, user_request: str, step_num: int = 0) -> Optional[str]:
         """
+            This function might recurse.
+
             user_request: The original user request
             step_number: the number of times we've called the LLM for this request.
-                Used to keep track of whether it's a fresh request we're processing (step number 0), or if we're already in the middle of one.
+                Used to keep track of whether it's a fresh request we're processing (step number 0), or if we're already
+                in the middle of one.
                 Without it the LLM kept looping after finishing the user request.
                 Also, it is needed because the LLM we are using doesn't have a stateful/assistant mode.
         """
-        instructions = self.llm.get_instructions_for_objective(user_request, step_num)
-        # Send to Interpreter and Executor
-        self.interpreter.process(instructions["steps"])  # GPTToLocalInterface.py
-        if instructions["done"]:
+        self.interrupt_execution = False
+
+        if not self.llm:
+            status = 'Set your OpenAPI API Key in Settings and Restart the App'
+            self.status_queue.put(status)
+            return status
+
+        try:
+            instructions: dict[str, Any] = self.llm.get_instructions_for_objective(user_request, step_num)
+
+            if instructions == {}:
+                # Sometimes LLM sends malformed JSON response, in that case retry once more.
+                instructions = self.llm.get_instructions_for_objective(user_request + ' Please reply in valid JSON',
+                                                                       step_num)
+
+            for step in instructions['steps']:
+                if self.interrupt_execution:
+                    self.status_queue.put('Interrupted')
+                    self.interrupt_execution = False
+                    return 'Interrupted'
+
+                success = self.interpreter.process_command(step)
+
+                if not success:
+                    return 'Unable to execute the request'
+
+        except Exception as e:
+            status = f'Exception Unable to execute the request - {e}'
+            self.status_queue.put(status)
+            return status
+
+        if instructions['done']:
             # Communicate Results
-            print(instructions["done"])
+            self.status_queue.put(instructions['done'])
+            self.play_ding_on_completion()
+            return instructions['done']
         else:
             # if not done, continue to next phase
-            self.execute(user_request, step_num + 1)
+            self.status_queue.put('Fetching further instructions based on current state')
+            return self.execute(user_request, step_num + 1)
+
+    def play_ding_on_completion(self):
+        # Play ding sound to signal completion
+        if self.settings_dict.get('play_ding_on_completion'):
+            print('\a')
+
+    def cleanup(self):
+        self.llm.cleanup()
 
 class Interpreter:
-    def __init__(self):
-        pass
-    def process(self, json_commands):
+    def __init__(self, status_queue: Queue):
+        # MP Queue to put current status of execution in while processes commands.
+        # It helps us reflect the current status on the UI.
+        self.status_queue = status_queue
+
+    def process_commands(self, json_commands: list[dict[str, Any]]) -> bool:
+        """
+        Reads a list of JSON commands and runs the corresponding function call as specified in context.txt
+        :param json_commands: List of JSON Objects with format as described in context.txt
+        :return: True for successful execution, False for exception while interpreting or executing.
+        """
         for command in json_commands:
-            function_name = command["function"]
-            parameters = command.get('parameters', {})
+            success = self.process_command(command)
+            if not success:
+                return False  # End early and return
+        return True
+
+    def process_command(self, json_command: dict[str, Any]) -> bool:
+        """
+        Reads the passed in JSON object and extracts relevant details. Format is specified in context.txt.
+        After interpretation, it proceeds to execute the appropriate function call.
+
+        :return: True for successful execution, False for exception while interpreting or executing.
+        """
+        function_name = json_command['function']
+        parameters = json_command.get('parameters', {})
+        human_readable_justification = json_command.get('human_readable_justification')
+        print(f'Now performing - {function_name} - {parameters} - {human_readable_justification}')
+        self.status_queue.put(human_readable_justification)
+        try:
             self.execute_function(function_name, parameters)
-    def execute_function(self, function_name, parameters):
+            return True
+        except Exception as e:
+            print(f'We are having a problem executing this - {e}')
+            return False
+
+    def execute_function(self, function_name: str, parameters: dict[str, Any]) -> None:
         """
             We are expecting only two types of function calls below
             1. time.sleep() - to wait for web pages, applications, and other things to load.
             2. pyautogui calls to interact with system's mouse and keyboard.
         """
+        # Sometimes pyautogui needs warming up i.e. sometimes first call isn't executed hence padding a random call here
+        pyautogui.press("command", interval=0.2)
+
         if function_name == "sleep" and parameters.get("secs"):
             sleep(parameters.get("secs"))
         elif hasattr(pyautogui, function_name):
             # Execute the corresponding pyautogui function i.e. Keyboard or Mouse commands.
             function_to_call = getattr(pyautogui, function_name)
+
             # Special handling for the 'write' function
             if function_name == 'write' and ('string' in parameters or 'text' in parameters):
-                # 'write' function expects a string, not a 'text' keyword argument. LLM sometimes gets confused on what to send.
+                # 'write' function expects a string, not a 'text' keyword argument but LLM sometimes gets confused on the parameter name.
                 string_to_write = parameters.get('string') or parameters.get('text')
-                interval = parameters.get('interval', 0.05)
+                interval = parameters.get('interval', 0.1)
                 function_to_call(string_to_write, interval=interval)
             elif function_name == 'press' and ('keys' in parameters or 'key' in parameters):
                 # 'press' can take a list of keys or a single key
-                keys_to_press = parameters['keys'] or parameters.get('key')
+                keys_to_press = parameters.get('keys') or parameters.get('key')
                 presses = parameters.get('presses', 1)
-                interval = parameters.get('interval', 0.0)
-                for key in keys_to_press:
-                    function_to_call(key, presses=presses, interval=interval)
+                interval = parameters.get('interval', 0.1)
+                function_to_call(keys_to_press, presses=presses, interval=interval)
             elif function_name == 'hotkey':
                 # 'hotkey' function expects multiple key arguments, not a list
                 function_to_call(*parameters['keys'])
@@ -130,82 +218,43 @@ class Interpreter:
                 # For other functions, pass the parameters as they are
                 function_to_call(**parameters)
         else:
-            print(f"No such function {function_name} in our interface's interpreter")
+            print(f'No such function {function_name} in our interface\'s interpreter')
+
 class LLM:
     def __init__(self):
-        self.client = OpenAI()
-        self.model = "gpt-4o"
-        with open('context.txt', 'r') as file:
-            self.context = file.read()
-        self.context += f"\nDefault browser is {local_info.default_browser}."
-        self.context += f" Locally installed apps are {','.join(local_info.locally_installed_apps)}."
-        self.context += f" Primary screen size is {Screen().get_size()}.\n"
-        self.assistant = self.client.beta.assistants.create(
-            name="Open Interface Backend",
-            instructions=self.context,
-            model="gpt-4o",
-        )
-        self.thread = self.client.beta.threads.create()
-    def get_instructions_for_objective(self, original_user_request, step_num=0):
-        openai_file_id_for_screenshot, temp_filename = self.upload_screenshot_and_get_file_id()
-        formatted_user_request = self.format_user_request_for_llm(original_user_request, step_num,
-                                                                  openai_file_id_for_screenshot)
-        llm_response = self.send_message_to_llm_v2(formatted_user_request)
-        json_instructions: dict[str, Any] = self.convert_llm_response_to_json_v2(llm_response)
-        return json_instructions
-    def format_user_request_for_llm(self, original_user_request, step_num, openai_file_id_for_screenshot) -> list[
-        dict[str, Any]]:
-        request_data: str = json.dumps({
-            'original_user_request': original_user_request,
-            'step_num': step_num
-        })
-        content = [
-            {
-                'type': 'text',
-                'text': request_data
-            },
-            {
-                'type': 'image_file',
-                'image_file': {
-                    'file_id': openai_file_id_for_screenshot
-                }
-            }
-        ]
-        return content
-    def send_message_to_llm_v2(self, formatted_user_request) -> Message:
-        message = self.client.beta.threads.messages.create(
-            thread_id=self.thread.id,
-            role="user",
-            content=formatted_user_request
-        )
-        run = self.client.beta.threads.runs.create_and_poll(
-            thread_id=self.thread.id,
-            assistant_id=self.assistant.id,
-            instructions=''
-        )
-        while run.status != 'completed':
-            print(f'Waiting for response, sleeping for 1. run.status={run.status}')
-            time.sleep(1)
-            if run.status == 'failed':
-                print(f'failed run run.required_action:{run.required_action} run.last_error: {run.last_error}\n\n')
-                return None
-        if run.status == 'completed':
-            # NOTE: Apparently right now the API doesn't have a way to retrieve just the last message???
-            #  So instead you get all messages and take the latest one
-            response = self.client.beta.threads.messages.list(
-                thread_id=self.thread.id)
-            return response.data[0]
-        else:
-            print("Run did not complete successfully.")
-            return None
-    def convert_llm_response_to_json_v2(self, llm_response: ChatCompletion) -> dict[str, Any]:
-        llm_response_data: str = llm_response.content[0].text.value.strip()
-        start_index = llm_response_data.find('{')
-        end_index = llm_response_data.rfind('}')
-        try:
-            json_response = json.loads(llm_response_data[start_index:end_index + 1].strip())
-        except Exception as e:
-            print(f'Error while parsing JSON response - {e}')
-            json_response = {}
-        return json_response
+        self.settings_dict: dict[str, str] = Settings().get_dict()
+        model_name, base_url = self.get_settings_values()
+
+        self.model_name = model_name
+        context = self.read_context_txt_file()
+
+        self.model = ModelFactory.create_model(self.model_name, base_url, context)
+
+    def get_settings_values(self) -> tuple[str, str]:
+        model_name = self.settings_dict.get('model')
+        if not model_name:
+            model_name = DEFAULT_MODEL_NAME
+
+        base_url = self.settings_dict.get('base_url', '')
+        if not base_url:
+            base_url = 'http://localhost:8000/'
+        base_url = base_url.rstrip('/') + '/'
+
+        return model_name, base_url
+
+    def switch_model(self, model_name: str):
+        self.model_name = model_name
+        context = self.read_context_txt_file()
+        self.model = ModelFactory.create_model(self.model_name, context)
+
+    def download_model(self, model_name: str):
+        if isinstance(self.model, ollama.OllamaModel):
+            self.model.download_model(model_name)
+
+    def read_context_txt_file(self) -> str:
+        context_path = Path('resources/context.txt')
+        if context_path.exists():
+            with context_path.open('r') as file:
+                return file.read()
+        return ""
 End of code
