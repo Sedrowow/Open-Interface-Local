@@ -44,7 +44,7 @@ class Core:
         self.interrupt_execution = False
 
         if not self.llm:
-            status = 'Set your OpenAPI API Key in Settings and Restart the App'
+            status = 'oops something went wrong'
             self.status_queue.put(status)
             return status
 

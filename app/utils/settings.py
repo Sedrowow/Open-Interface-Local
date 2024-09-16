@@ -34,8 +34,8 @@ class Settings:
                 if setting_name == "base_url":
                     base_url = settings_dict["base_url"]
                     os.environ["BASE_URL"] = base_url  # Set environment variable
-                    encoded_api_key = base64.b64encode(base_url.encode()).decode()
-                    settings['base_url'] = encoded_api_key
+                    encoded_base_url = base64.b64encode(base_url.encode()).decode()
+                    settings['base_url'] = encoded_base_url
                 else:
                     settings[setting_name] = setting_val
 

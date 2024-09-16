@@ -96,7 +96,11 @@ class UI:
                 'base_url': base_url,
                 'model': model,
             }
-
+            try:
+                LLM().switch_model(model)
+            except ValueError as e:
+                LLM().download_model(model)
+                LLM().switch_model(model)
             self.settings.save_settings_to_file(settings_dict)
             self.destroy()
 
@@ -116,8 +120,6 @@ class UI:
             # Populate UI
             settings_dict = self.settings.get_dict()
 
-            if 'api_key' in settings_dict:
-                self.api_key_entry.insert(0, settings_dict['api_key'])
             if 'default_browser' in settings_dict:
                 self.browser_combobox.set(settings_dict['default_browser'])
             if 'play_ding_on_completion' in settings_dict:
@@ -169,7 +171,7 @@ class UI:
             update_label = tk.Label(self, text='Check for Updates', fg='#499CE4', font=('Helvetica', 10))
             update_label.pack()
             update_label.bind('<Button-1>', lambda e: open_link(
-                'https://github.com/AmberSahdev/Open-Interface/releases/latest'))
+                'https://github.com/Sedrowow/Open-Interface-Local/releases'))
 
             # Version Label
             version_label = tk.Label(self, text=f'Version: {str(version)}', font=('Helvetica', 10))
