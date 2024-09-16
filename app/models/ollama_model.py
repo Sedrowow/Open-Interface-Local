@@ -28,6 +28,7 @@ class OllamaModel(Model):
             str: The formatted request as a JSON string.
         """
         request_data = {
+            'context': self.context,
             'original_user_request': original_user_request,
             'step_num': step_num
         }
