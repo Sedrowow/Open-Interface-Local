@@ -28,7 +28,6 @@ class OllamaModel(Model):
             str: The formatted request as a JSON string.
         """
         request_data = {
-            'context': self.context,
             'original_user_request': original_user_request,
             'step_num': step_num
         }
@@ -38,9 +37,18 @@ class OllamaModel(Model):
 
     def send_message_to_llm(self, formatted_user_request: str) -> Any:
         try:
-            response = ollama.generate(
+            response = ollama.chat(
                 model=self.model_name,
-                prompt=formatted_user_request
+                messages=[
+                    {
+                        'role': 'instructions',
+                        'content': self.context
+                    },
+                    {
+                        'role': 'prompt',
+                        'content': formatted_user_request
+                    },
+                     ]
             )
             return response
         except Exception as e:
