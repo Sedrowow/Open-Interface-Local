@@ -32,7 +32,7 @@ class UI:
         model_label.pack()
 
         model_dropdown = ttk.Combobox(self.root, textvariable=self.model_var)
-        model_dropdown['values'] = ('ollama', 'other_model_1', 'other_model_2')
+        model_dropdown['values'] = ('ollama', 'llama3.1', 'phi3', 'gemma2', 'minicpm-v', 'llava', 'mistral-nemo')
         model_dropdown.pack()
 
         model_dropdown.bind("<<ComboboxSelected>>", self.on_model_selected)
