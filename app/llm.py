@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 import ollama
 from ollama import Client
-from models.factory import ModelFactory
+from models.factory import ModelFactory, OllamaModel
 from utils import local_info
 from utils.screen import Screen
 from utils.settings import Settings
@@ -34,11 +34,13 @@ class LLM(Client):
         return model_name, base_url
 
     def switch_model(self, model_name: str):
+        model_name, base_url = self.get_settings_values()
+        context = self.read_context_txt_file()
         self.model_name = model_name
-        self.model = ModelFactory.create_model(self.model_name)
+        self.model = ModelFactory.create_model(self.model_name, base_url, context)
 
     def download_model(self, model_name: str):
-        if isinstance(self.model, ollama.show(model=model_name)):
+        if isinstance(self.model, OllamaModel):
             self.model.download_model(model_name)
 
     def read_context_txt_file(self) -> str:

@@ -89,7 +89,7 @@ class UI:
             save_button = ttk.Button(self, text='Save Settings', command=self.save_button)
             save_button.pack(pady=20)
 
-        def save_button(self) -> None:
+        def save_button(self):
             base_url = self.base_url_entry.get().strip()
             model = self.model_var.get() if self.model_var.get() != 'custom' else self.model_entry.get().strip()
             settings_dict = {
@@ -184,7 +184,6 @@ class UI:
                 'play_ding_on_completion': bool(self.play_ding.get()),
                 'custom_llm_instructions': self.llm_instructions_text.get("1.0", "end-1c").strip()
             }
-
             self.settings.save_settings_to_file(settings_dict)
             self.destroy()
 

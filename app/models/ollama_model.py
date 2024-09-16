@@ -8,6 +8,7 @@ class OllamaModel(Model):
     def __init__(self, model_name, base_url, context):
         super().__init__(model_name, base_url, context)
         self.model_name = model_name
+        self.download_model(model_name)
 
     def get_instructions_for_objective(self, original_user_request: str, step_num: int = 0) -> Dict[str, Any]:
         formatted_request = self.format_user_request_for_llm(original_user_request, step_num)
@@ -65,7 +66,8 @@ class OllamaModel(Model):
 
     def download_model(self, model_name: str):
         # Use ollama-python to download the model
-        ollama.pull(model_name)
+        progress = ollama.pull(model_name)
+        return progress
 
     def switch_model(self, model_name: str):
         # Switch to the downloaded model
