@@ -1,14 +1,14 @@
 # app/llm.py
 from pathlib import Path
 from typing import Any
-import ollama
+import ollama_python as ollama
 
 from models.factory import ModelFactory
 from utils import local_info
 from utils.screen import Screen
 from utils.settings import Settings
 
-DEFAULT_MODEL_NAME = "default_model"
+DEFAULT_MODEL_NAME = "gemma2"
 
 class LLM:
     def __init__(self):
@@ -35,7 +35,7 @@ class LLM:
     def switch_model(self, model_name: str):
         self.model_name = model_name
         context = self.read_context_txt_file()
-        self.model = ModelFactory.create_model(self.model_name, self.settings_dict.get('base_url', ''), self.settings_dict.get('api_key', None), context)
+        self.model = ModelFactory.create_model(self.model_name, context)
 
     def download_model(self, model_name: str):
         if isinstance(self.model, ollama.OllamaModel):

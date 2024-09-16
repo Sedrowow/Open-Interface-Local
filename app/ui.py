@@ -9,7 +9,7 @@ from tkinter import ttk
 import speech_recognition as sr
 from PIL import Image, ImageTk
 
-from llm import DEFAULT_MODEL_NAME, LLM
+from llm import LLM
 from utils.settings import Settings
 from version import version
 
@@ -32,7 +32,7 @@ class UI:
         model_label.pack()
 
         model_dropdown = ttk.Combobox(self.root, textvariable=self.model_var)
-        model_dropdown['values'] = ('ollama', 'llama3.1', 'phi3', 'gemma2', 'minicpm-v', 'llava', 'mistral-nemo')
+        model_dropdown['values'] = ('llama3.1', 'phi3', 'gemma2', 'minicpm-v', 'llava', 'mistral-nemo')
         model_dropdown.pack()
 
         model_dropdown.bind("<<ComboboxSelected>>", self.on_model_selected)

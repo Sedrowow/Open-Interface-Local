@@ -25,7 +25,3 @@ class Settings:
     def set_model(self, model_name: str):
         self.settings_dict['model'] = model_name
         self.save_settings()
-
-# Example usage
-settings = Settings()
-settings.set_model('ollama')

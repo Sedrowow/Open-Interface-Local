@@ -1,4 +1,4 @@
 {
-    "model": "ollama",
+    "model": "gemma2",
     "base_url": "http://localhost:8000/"
 }

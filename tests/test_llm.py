@@ -8,7 +8,7 @@ from app.utils.settings import Settings
 class TestLLMWithOllama(unittest.TestCase):
     @patch('app.llm.ollama.generate')
     @patch.object(Settings, 'get_dict', return_value={
-        'model': 'ollama',
+        'model': 'gemma2',
         'base_url': 'http://localhost:8000/'
     })
     def test_llm_with_ollama_model(self, mock_get_dict, mock_generate):
@@ -44,7 +44,7 @@ class TestLLMWithOllama(unittest.TestCase):
 
         # Verify that ollama.generate was called with the correct parameters
         mock_generate.assert_called_once_with(
-            model='ollama',
+            model='gemma2',
             prompt='{"original_user_request": "Test request", "step_num": 0}'
         )
 
@@ -54,10 +54,10 @@ class TestLLMWithOllama(unittest.TestCase):
         llm = LLM()
 
         # Test the download_model method
-        llm.download_model('ollama')
+        llm.download_model('gemma2')
 
         # Verify that ollama.download was called with the correct parameters
-        mock_download.assert_called_once_with('ollama')
+        mock_download.assert_called_once_with('gemma2')
 
     @patch('app.llm.ollama.generate')
     def test_switch_model(self, mock_generate):
@@ -65,10 +65,10 @@ class TestLLMWithOllama(unittest.TestCase):
         llm = LLM()
 
         # Test the switch_model method
-        llm.switch_model('other_model_1')
+        llm.switch_model('phi3')
 
         # Verify that the model name was updated
-        self.assertEqual(llm.model_name, 'other_model_1')
+        self.assertEqual(llm.model_name, 'phi3')
 
 if __name__ == '__main__':
     unittest.main()
