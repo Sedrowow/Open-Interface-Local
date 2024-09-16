@@ -35,8 +35,7 @@ class LLM(Client):
 
     def switch_model(self, model_name: str):
         self.model_name = model_name
-        context = self.read_context_txt_file()
-        self.model = ModelFactory.create_model(self.model_name, context)
+        self.model = ModelFactory.create_model(self.model_name)
 
     def download_model(self, model_name: str):
         if isinstance(self.model, ollama.show(model=model_name)):

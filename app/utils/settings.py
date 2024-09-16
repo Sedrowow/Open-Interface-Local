@@ -50,7 +50,7 @@ class Settings:
                 except:
                     return {}
 
-                # Decode the API key
+                # Decode the base_url
                 if 'base_url' in settings:
                     decoded_base_url = base64.b64decode(settings['base_url']).decode()
                     settings['base_url'] = decoded_base_url
